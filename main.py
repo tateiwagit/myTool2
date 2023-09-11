@@ -1,65 +1,53 @@
 # 目標　nijieのルカリオを自動で新着監視、通知する
-import requests
-from bs4 import BeautifulSoup
-import time
+from selenium import webdriver
+from selenium.webdriver.common.by import By
 from time import sleep
 
-# セッションを作成
-session = requests.Session()
+# WebDriverを設定 (Firefoxを使用する場合)
+driver = webdriver.Chrome()
 
-# 与えられたURLからHTMLコンテンツを取得する関数
-def get_html(url):
-    response = session.get(url)
-    return response.text
+# 指定したURLを開く
+age_url = 'https://nijie.info/age_ver.php/'  # age_urlを実際のURLに置き換えてください
+driver.get(age_url)
 
-# HTMLから指定のテキストを含むリンクを探索する関数
-def find_links_with_text(html, unique_text):
-    links = []
-    soup = BeautifulSoup(html, 'lxml')
-    
-    # <a> タグを探し、href属性とテキストコンテンツを取得
-    for a_tag in soup.find_all('a'):
-        href = a_tag.get('href')
-        text = a_tag.get_text()
-        
-        # テキストに指定のテキストが含まれているか確認
-        if unique_text in text:
-            links.append(href)
-    
-    return links
+try:
+    # 「私は１８歳以上」というテキストを持つ要素の下にあるボタンを探す
+    age_verification_text = "はい、私は18歳以上です" # 後で正規表現で書き換える
+    button = driver.find_element(By.LINK_TEXT, age_verification_text)
 
-# メインの実行部分
-if __name__ == '__main__':
-    # 与えられたURLを指定
-    url_searching = 'https://nijie.info/age_ver.php?'
-    unique_text = '私は18歳以上'
-
-    # URLからHTMLを取得
-    html = get_html(url_searching)
+    # ボタンをクリック
+    button.click()
     sleep(3)
 
-    # 指定のテキストを含むリンクを探索
-    links = find_links_with_text(html, unique_text)
-    print(f'Links URL: {links}\n')
+    # ボタンをクリックした後のURLを取得
+    next_page_url = driver.current_url
+    print(f'次のページのURL: {next_page_url}')
 
-    # 各リンクからページを取得
-    for link in links:
-        if link.startswith('http://') or link.startswith('https://'):
-            # 絶対URLの場合
-            link_url = link
-        else:
-            # 相対URLの場合、元のURLと結合して絶対URLを作成
-            link_url = session.get(url_searching).url + link
+    # 入力フォームにメールアドレスとパスワードを入力
+    my_email = input("メールアドレスを入力してください: ")  # ご自身のメールアドレスを指定してください
+    my_pass = input("パスワードを入力してください: ") # ご自身のパスワードを指定してください
 
-        # ページを取得
-        linked_page_html = get_html(link_url)
-        sleep(3)
-        # ここで必要な処理を実行
-        # 例: ページの内容を解析したり、保存したり
+    # メールアドレス入力フォームを探す
+    email_input = driver.find_element(By.NAME, "email")
+    email_input.send_keys(my_email)
+    sleep(3)
 
-        # ページの内容を表示（テスト用）
-        print(f'Linked Page URL: {link_url}')
-        print(linked_page_html)
+    # パスワード入力フォームを探す
+    pass_input = driver.find_element(By.NAME, "password")
+    pass_input.send_keys(my_pass)
+    sleep(3)
 
-        
-    session.close()
+    # ログインボタンをクリック
+    login_button = driver.find_element(By.CLASS_NAME, "login_button")
+    login_button.click()
+    sleep(3)
+
+    # ログイン後のページのURLを取得
+    logged_in_url = driver.current_url
+    print(f'ログイン後のページのURL: {logged_in_url}')
+    
+except Exception as e:
+    print(f'ボタンが見つからないか、クリックできないエラーが発生しました: {str(e)}')
+
+# WebDriverを終了
+driver.quit()
