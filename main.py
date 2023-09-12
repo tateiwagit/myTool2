@@ -1,8 +1,59 @@
 # 目標　nijieのルカリオを自動で新着監視、通知する
+import subprocess
+import configparser
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from time import sleep
 
+from datetime import datetime
+
+# 文字列から年月日と時間を取得する関数
+def extract_datetime_from_string(date_string):
+    try:
+        # "投稿時間："の部分を削除してから、指定された形式の文字列を解析してdatetimeオブジェクトを作成
+        date_format = '%Y-%m-%d %H:%M:%S'
+        parsed_date = datetime.strptime(date_string, date_format)
+        return parsed_date
+    except ValueError:
+        print("無効な日時形式です。")
+
+# 日時の比較を行う関数
+def compare_dates(date1, date2):
+    if date1 > date2:
+        return "date1が後の日時です。"
+    elif date2 > date1:
+        return "date2が後の日時です。"
+    else:
+        return "両方の日時は同じです。"
+
+# 設定ファイルからemailとpasswordを読み込む関数
+def read_user_info_from_config(config_file):
+    config = configparser.ConfigParser()
+    config.read(config_file)
+    if 'user_info' in config:
+        email = config['user_info'].get('email')
+        password = config['user_info'].get('password')
+        return email, password
+    else:
+        return None, None
+
+# 設定ファイルからLucarioのチェック日時を取得する関数
+def read_check_date_from_config(config_file):
+    config = configparser.ConfigParser()
+    config.read(config_file)
+    if 'check_date' in config:
+        lucario_date = config['check_date'].get('Lucario')
+        return lucario_date
+    else:
+        return None
+
+# メッセージをUbuntu通知として表示する関数
+def send_notification(message):
+    subprocess.run(['notify-send', message])
+
+# 設定ファイルのパス
+config_file = 'config/config.ini'
+    
 # WebDriverを設定 (Firefoxを使用する場合)
 driver = webdriver.Chrome()
 
@@ -23,9 +74,9 @@ try:
     next_page_url = driver.current_url
     print(f'次のページのURL: {next_page_url}')
 
-    # 入力フォームにメールアドレスとパスワードを入力
-    my_email = input("メールアドレスを入力してください: ")  # ご自身のメールアドレスを指定してください
-    my_pass = input("パスワードを入力してください: ") # ご自身のパスワードを指定してください
+    # 設定ファイルからemailとpasswordを読み込む
+    my_email, my_pass = read_user_info_from_config(config_file)
+    print(f"read info: {my_email}, {my_pass}")
 
     # メールアドレス入力フォームを探す
     email_input = driver.find_element(By.NAME, "email")
@@ -57,11 +108,6 @@ try:
     search_button.click()
     sleep(3)
 
-    item_for_search = "/html/body/div[3]/div[2]/div[2]/div[5]/div[1]/div[2]/a/div/p/img"    
-    element = driver.find_element(By.XPATH, item_for_search)
-    title = element.get_attribute('src')
-    print(f"searched item: {title}")
-
     item_for_search = "/html/body/div[3]/div[2]/div[2]/div[5]/div[1]/p[1]/a"
     page_button = driver.find_element(By.XPATH, item_for_search)
     page_button.click()
@@ -71,7 +117,32 @@ try:
     element = driver.find_element(By.XPATH, item_for_search)
     time = element.text
     print(f"post time: {time}")
-    
+
+    # テスト用の文字列
+    date_string1 = time
+    date_string1 = date_string1.replace("投稿時間：", "")
+    date_string2 = read_check_date_from_config(config_file)  # config.iniからLucarioのチェック日時を取得
+
+    # 文字列から年月日と時間を取得
+    date1 = extract_datetime_from_string(date_string1)
+    date2 = extract_datetime_from_string(date_string2)
+
+    if date1 and date2:
+        # 日時の比較を行う
+        result = compare_dates(date1, date2)
+        print(f"judge new Post: {result}")
+
+        # もしdate1が後の日時である場合、config.iniの値をdate1に書き換える
+        if result == "date1が後の日時です。":
+            config = configparser.ConfigParser()
+            config.read(config_file)
+            config.set('check_date', 'Lucario', date_string1)
+            with open(config_file, 'w') as configfile:
+                config.write(configfile)
+
+            message = f'nijieの"{search_word}"カテゴリーに新着投稿があります。'
+            send_notification(message)
+
 except Exception as e:
     print(f'ボタンが見つからないか、クリックできないエラーが発生しました: {str(e)}')
 
