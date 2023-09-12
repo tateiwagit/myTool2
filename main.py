@@ -45,6 +45,32 @@ try:
     # ログイン後のページのURLを取得
     logged_in_url = driver.current_url
     print(f'ログイン後のページのURL: {logged_in_url}')
+
+    search_word = "ルカリオ"
+    input_id = "form2"
+    search_input = driver.find_element(By.ID, input_id)
+    search_input.send_keys(search_word)
+    sleep(3)
+
+    search_btn_xpath = "//*[@id='btn']"
+    search_button = driver.find_element(By.XPATH, search_btn_xpath)
+    search_button.click()
+    sleep(3)
+
+    item_for_search = "/html/body/div[3]/div[2]/div[2]/div[5]/div[1]/div[2]/a/div/p/img"    
+    element = driver.find_element(By.XPATH, item_for_search)
+    title = element.get_attribute('src')
+    print(f"searched item: {title}")
+
+    item_for_search = "/html/body/div[3]/div[2]/div[2]/div[5]/div[1]/p[1]/a"
+    page_button = driver.find_element(By.XPATH, item_for_search)
+    page_button.click()
+    sleep(3)
+
+    item_for_search = "/html/body/div[2]/div[2]/div[4]/div[3]/div[2]/p/span"
+    element = driver.find_element(By.XPATH, item_for_search)
+    time = element.text
+    print(f"post time: {time}")
     
 except Exception as e:
     print(f'ボタンが見つからないか、クリックできないエラーが発生しました: {str(e)}')
